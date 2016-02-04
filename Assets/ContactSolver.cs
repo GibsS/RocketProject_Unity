@@ -3,56 +3,75 @@ using System.Collections.Generic;
 
 public class ContactSolver {
 
-	public MovementResult getFirstContact(Vector2 O, Vector2 E, Vector2 A, Vector2 B, float R) {
+	public TrajectoryInfo getFirstContact(Vector2 O, Vector2 E, Vector2 A, Vector2 B, float R) {
 		float t_A = - Vector2.Dot (O - A, B - A) / Vector2.Dot (E - O, B - A);
 		float t_B = - Vector2.Dot (O - B, A - B) / Vector2.Dot (E - O, A - B);
 
-		float t_min = 2;
-		Vector2 contactPoint = Vector2.zero;
+		Vector2 ABnormal = new Vector2 (-(B - A).y, (B - A).x);
+
+		float t_position = 2;
+		float t_contact = 0;
+		bool isEdge = false;
 
 		List<float> l = null;
 		if (t_A < t_B) {
 			l = getFirstContactPoint(O, E, A, R);
 			for(int i = 0; i < l.Count; i++)
-			if(l[i] >= 0 && l[i] <= t_A && l[i] < t_min) {
-				t_min = l[i];
-				contactPoint = A;
+			if(l[i] >= 0 && l[i] <= t_A && l[i] < t_position) {
+				t_position = l[i];
+				t_contact = 0;
+				isEdge = true;
 			}
 
 			l = getFirstContactPoint(O, E, B, R);
 			for(int i = 0; i < l.Count; i++)
-			if(l[i] >= 0 && l[i] >= t_B && l[i] < t_min && l[i] <= 1) {
-				t_min = l[i];
-				contactPoint = B;
+			if(l[i] >= 0 && l[i] >= t_B && l[i] < t_position && l[i] <= 1) {
+				t_position = l[i];
+				t_contact = 1;
+				isEdge = true;
 			}
 		} else {
 			l = getFirstContactPoint(O, E, A, R);
 			for(int i = 0; i < l.Count; i++)
-			if(l[i] >= 0 && l[i] >= t_A && l[i] < t_min && l[i] <= 1) {
-				t_min = l[i];
-				contactPoint = A;
+			if(l[i] >= 0 && l[i] >= t_A && l[i] < t_position && l[i] <= 1) {
+				t_position = l[i];
+				t_contact = 0;
+				isEdge = true;
 			}
 			
 			l = getFirstContactPoint(O, E, B, R);
 			for(int i = 0; i < l.Count; i++)
-			if(l[i] >= 0 && l[i] <= t_B && l[i] < t_min) {
-				t_min = l[i];
-				contactPoint = B;		
+			if(l[i] >= 0 && l[i] <= t_B && l[i] < t_position) {
+				t_position = l[i];
+				t_contact = 1;
+				isEdge = true;
 			}
 		}
 		l = getFirstContactLine(O, E, A, B, R);
 		for(int i = 0; i < l.Count; i++)
-		if(l[i] >= 0 && l[i] >= Mathf.Min(t_A, t_B) && l[i] <= Mathf.Max(t_A, t_B) && l[i] < t_min) {
-			t_min = l[i];
+		if(l[i] >= 0 && l[i] >= Mathf.Min(t_A, t_B) && l[i] <= Mathf.Max(t_A, t_B) && l[i] < t_position) {
+			t_position = l[i];
 			Vector2 AB = (B-A).normalized;
 			Vector2 pos = O + l[i]*(E - O);
-			contactPoint = Vector2.Dot(pos - A, AB)*AB + A;
+			t_contact = Vector2.Dot(pos - A, AB)/Vector2.Distance(B, A);
+			isEdge = false;
 		}
 
-		if (t_min <= 1) {
-			return new MovementResult(O, E, t_min, contactPoint, true);
+		if (t_position <= 1) {
+			Vector2 pos = O + t_position*(E - O);
+			if(isEdge) {
+				if(t_contact == 0)
+					return new TrajectoryInfo(A, B, t_contact, false, isEdge, 
+			                          Vector2.Angle(ABnormal, pos-A), R);
+				else 
+					return new TrajectoryInfo(A, B, t_contact, false, isEdge, 
+				                          Vector2.Angle(ABnormal, pos-B), R);
+			} else {
+				return new TrajectoryInfo(A, B, t_contact, Vector2.Dot (pos-A, ABnormal) > 0, isEdge, 
+				                          0, R);
+			}
 		} else {
-			return new MovementResult();
+			return new TrajectoryInfo();
 		}
 	}
 
@@ -102,32 +121,48 @@ public class ContactSolver {
 			return res;
 		}
 	}
-
-	public bool pointOnSegment(Vector2 M, Vector2 A, Vector2 B) {
-		Vector2 H = Vector2.Dot (M - A, (B - A).normalized) * (B - A).normalized + A;
-		return Vector2.Dot (M - A, B - A) > 0 && Vector2.Dot (M - B, A - B) > 0 && Vector2.Distance(H, M) < 0.05f;
-	}
 }
 
-public class MovementResult {
-	public Vector2 start;
-	public Vector2 expectedFinish;
-	public float ratio;
-	public Vector2 contactPoint;
-	public bool hasContact;
+public class TrajectoryInfo {
+	public Vector2 A;
+	public Vector2 B;
+	public float contactRatio;
+	public bool side; 
 	
-	public MovementResult(Vector2 start, Vector2 expectedFinish, float ratio, Vector2 contactPoint, bool hasContact) {
-		this.start = start;
-		this.expectedFinish = expectedFinish;
-		this.hasContact = hasContact;
-		this.contactPoint = contactPoint;
-		this.ratio = ratio;
+	public bool isEdgeContact;
+	public float angle;
+
+	public bool hasContact;
+
+	public float R;
+	
+	public TrajectoryInfo(Vector2 A, Vector2 B, float contactRatio, bool side, bool isEdgeContact, float angle, float R) {
+		this.A = A;
+		this.B = B;
+		this.contactRatio = contactRatio;
+		this.side = side;
+
+		this.isEdgeContact = isEdgeContact;
+		this.angle = angle;
+
+		this.hasContact = true;
+
+		this.R = R;
 	}
-	public MovementResult() {
+	public TrajectoryInfo() {
 		this.hasContact = false;
 	}
 
-	public Vector2 getContactPosition() {
-		return start + ratio * (expectedFinish - start);
+	public Vector2 getPosition() {
+		if (isEdgeContact && contactRatio == 1)
+			return B + R*(Vector2)(Quaternion.AngleAxis (-angle, new Vector3 (0, 0, 1)) * new Vector2 (-(B - A).normalized.y, (B - A).normalized.x));
+		else if (isEdgeContact) 
+			return A + R*(Vector2)(Quaternion.AngleAxis (angle, new Vector3 (0, 0, 1)) * new Vector2 (-(B - A).normalized.y, (B - A).normalized.x));
+		else 
+			return A + contactRatio * (B - A) + (side?1:-1) * R * new Vector2 (-(B - A).normalized.y, (B - A).normalized.x);
+	}
+
+	public static implicit operator bool(TrajectoryInfo d){
+		return d != null && d.hasContact;
 	}
 }

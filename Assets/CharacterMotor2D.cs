@@ -7,231 +7,274 @@ public class CharacterMotor2D : MonoBehaviour {
 
 	public float radius;
 
-	public EdgeCollider2D[] edges;
-	public int[] edgePoints;
-	public Vector2[] contactPoints;
+	public ContactInfo[] contactInfos;
+	public int contactCount;
+	
+	EdgeCollider2D tester;
 
-	void Start () {
+	void Start() {
+		tester = GetComponent<EdgeCollider2D> ();
 		contactSolver = new ContactSolver ();
-
-		edges = new EdgeCollider2D[2];
-		edgePoints = new int[2];
-		contactPoints = new Vector2[2];
+		contactInfos = new ContactInfo[2];
+		contactCount = 0;
 	}
 
-	public Vector2 globalFirstEdgePoint(int i) {
-		return edges[i].transform.TransformPoint(edges [i].points [edgePoints [i]] + edges[i].offset);
-	}
-	public Vector2 globalSecondEdgePoint(int i) {
-		return edges[i].transform.TransformPoint(edges [i].points [edgePoints [i]+1] + edges[i].offset);
-	}
-	public Vector2 normal(int i) {
-		return (transform.position - transform.TransformPoint(contactPoints[i])).normalized;
-	}
-	public Vector2 localContactPoint(int i) {
-		return contactPoints [i];
-	}
-	public Vector2 globalContactPoint(int i) {
-		return transform.TransformPoint (contactPoints [i]);
-	}
-
-	public Vector2 movement(Vector2 direction) {
-		Vector2 remainder = Vector2.zero;
-		if (edges [0] == null) {
-			remainder = freeMove(direction);
-		} else if (edges [1] == null) {
-			Vector2 n = normal (0);
-			if(Vector2.Dot(direction, normal (0)) > 0) {
-				remainder =  freeMove(direction);
+	public Vector2 move(Vector2 movement) {
+		if (contactCount == 0) {
+			return free (movement);
+		} else if (contactCount == 1) {
+			if(Vector2.Dot(movement, contactInfos[0].getNormal()) > 0) {
+				return free (movement);
 			} else {
-				if(Vector2.Distance(globalContactPoint(0), globalFirstEdgePoint(0)) < 0.001f 
-				   || Vector2.Distance(globalContactPoint(0), globalSecondEdgePoint(0)) < 0.001f) {
-					Vector2 tangent = direction - Vector2.Dot(direction, n)*n;
-
-					remainder = freeMove(tangent * Vector2.Dot(tangent, direction));
+				if(contactInfos[0].isEdgeContact) {
+					Vector2 normal = contactInfos[0].getNormal();
+					return free (movement - Vector2.Dot (movement, normal)*normal);
 				} else {
-					Vector2 tangent = (globalSecondEdgePoint(0) - globalFirstEdgePoint(0)).normalized;
-
-					remainder =  tangent * lineMove(0, Vector2.Dot(tangent, direction));
+					return line (0, Vector2.Dot(movement, contactInfos[0].getMainTangent()));
 				}
 			}
 		} else {
-			Vector2 normal1 = -normal (0);
-			Vector2 normal2 = -normal (1);
+			Vector2 normal1 = contactInfos[0].getNormal();
+			Vector2 normal2 = contactInfos[1].getNormal();
 
-			if(Vector2.Angle(normal1, direction) > 90 && Vector2.Angle(normal2, direction) > 90) {
-				remainder = freeMove(direction);
-			} else if(Vector2.Angle(normal1, direction) <= 90 && Vector2.Dot (normal2, direction) <= 0) {
-				if(Vector2.Distance(globalContactPoint(0), globalFirstEdgePoint(0)) < 0.001f 
-				   || Vector2.Distance(globalContactPoint(0), globalSecondEdgePoint(0)) < 0.001f) {
-					Vector2 tangent = direction - Vector2.Dot(direction, normal1)*normal1;
-					
-					remainder = freeMove(tangent * Vector2.Dot(tangent, direction));
-				} else {
-					Vector2 tangent = (globalSecondEdgePoint(0) - globalFirstEdgePoint(0)).normalized;
-					
-					remainder =  tangent * lineMove(0, Vector2.Dot(tangent, direction));
-				}
-			} else if(Vector2.Angle(normal2, direction) <= 90 && Vector2.Dot (normal1, direction) <= 0) {
-				if(Vector2.Distance(globalContactPoint(1), globalFirstEdgePoint(1)) < 0.001f 
-				   || Vector2.Distance(globalContactPoint(1), globalSecondEdgePoint(1)) < 0.001f) {
-					Vector2 tangent = direction - Vector2.Dot(direction, normal2)*normal2;
-					
-					remainder = freeMove(tangent * Vector2.Dot(tangent, direction));
-				} else {
-					Vector2 tangent = (globalSecondEdgePoint(1) - globalFirstEdgePoint(1)).normalized;
-					
-					remainder =  tangent * lineMove(1, Vector2.Dot(tangent, direction));
-				}
+			Vector2 tangent1 = contactInfos[0].getMainTangent();
+			Vector2 tangent2 = contactInfos[1].getMainTangent();
+
+			if(Vector2.Dot(normal1, tangent2) < 0) {
+				tangent2 = -tangent2;
+			}
+			if(Vector2.Dot(normal2, tangent1) < 0) {
+				tangent1 = -tangent1;
+			}
+
+			bool area1 = Vector2.Dot (movement, normal1) > 0;
+			bool area2 = Vector2.Dot (movement, normal2) > 0;
+			if(area1 && area2) {
+				return free (movement);
+			} else if(area1 && Vector2.Dot (movement, tangent2) > 0) {
+				return line (1, Vector2.Dot(movement, contactInfos[1].getMainTangent()));
+			} else if(area2 && Vector2.Dot (movement, tangent1) > 0) {
+				return line (0, Vector2.Dot(movement, contactInfos[0].getMainTangent()));
+			} else {
+				return Vector2.zero;
 			}
 		}
-
-		return remainder;
 	}
 
-	private Vector2 freeMove(Vector2 movement) {
-		MoveInformation mi = findCollision(movement);
+	private Vector2 free(Vector2 movement) {
+		ContactInfo ci = findContact (movement);
+		
+		contactCount = 0;
+		
+		if (ci) {
+			contactInfos[0] = ci;
+			contactCount = 1;
 
-		edges [0] = null;
-		edges [1] = null;
+			Vector2 newPosition = ci.getPosition();
 
-		if (mi.hasContact) {
-			transform.position = mi.start + mi.ratio * (mi.end - mi.start);
-
-			edges [0] = mi.edge;
-			edgePoints [0] = mi.edgePoint;
-			contactPoints [0] = transform.InverseTransformPoint(mi.contactPoint);
-
-			return (1 - mi.ratio)*(mi.end - mi.start);
+			Vector2 remainder = (Vector2)transform.position + movement - newPosition;
+			transform.position = ci.getPosition();
+			return remainder;
 		} else {
 			transform.position += (Vector3)movement;
 			return Vector2.zero;
 		}
 	}
+	private Vector2 line(int contactId, float movement) {
+		Vector2 movementVec = movement * (contactInfos [contactId].getSecondEdgePoint () - contactInfos [contactId].getFirstEdgePoint ()).normalized;
+		Vector2 expectedPosition = (Vector2)transform.position + movementVec;
 
-	private float lineMove(int contactId, float movement) {
-		Vector2 direction = (globalSecondEdgePoint(contactId) - globalFirstEdgePoint(contactId)).normalized;
-		MoveInformation mi = findCollision(movement * direction);
+		ContactInfo ci = findContact (movementVec);
 
-		if (contactId == 0) {
-			edges [1] = null;
+		// Calculate new position :
+		Vector2 newPosition;
+		if (ci) {
+			newPosition = ci.getPosition();
 		} else {
-			edges [0] = edges[1];
-			edgePoints[0] = edgePoints[1];
-			contactPoints[0] = contactPoints[1];
-			
-			edges [1] = null;
+			newPosition = expectedPosition;
 		}
 
-		float reminderLength;
-		float movementLength = mi.hasContact?Vector2.Distance (mi.ratio * (mi.end - mi.start), Vector2.zero):Mathf.Abs(movement);
+		// Deleting extra contact
+		contactCount = 1;
+		if (contactId == 1) {
+			contactInfos[0] = contactInfos[1];
+		}
+
+		// Updating current contact
+		float remainderMovement;
 		if (movement > 0) {
-			reminderLength = Vector2.Distance (globalSecondEdgePoint (0), globalContactPoint (0));
+			remainderMovement = Vector2.Distance (contactInfos [0].getContactPoint(), 
+			                                      contactInfos [0].getSecondEdgePoint ());
 		} else {
-			reminderLength = Vector2.Distance (globalFirstEdgePoint (0), globalContactPoint (0));
+			remainderMovement = Vector2.Distance (contactInfos [0].getContactPoint(), 
+			                                      contactInfos [0].getFirstEdgePoint ());
 		}
 
-		if (movementLength > reminderLength) {
-			edges [0] = null;
+		if (remainderMovement < Mathf.Abs (movement)) {
+			contactCount = 0;
+		} else {
+			Vector2 A = contactInfos[0].getFirstEdgePoint();
+			Vector2 B = contactInfos[0].getSecondEdgePoint();
+			Vector2 AB = (B - A).normalized;
+			float ABlength = Vector2.Distance(B, A);
+			contactInfos[0].contactRatio = Vector2.Dot(newPosition - A, AB)/ABlength;
 		}
 
-		if (mi.hasContact) {
-			transform.position = mi.start + mi.ratio * (mi.end - mi.start);
-
-			if (edges [0] == null) {
-				edges [0] = mi.edge;
-				edgePoints [0] = mi.edgePoint;
-				contactPoints [0] = transform.InverseTransformPoint(mi.contactPoint);
+		// Adding new contact
+		if (ci) {
+			if(contactCount == 0) {
+				contactInfos[0] = ci;
+				contactCount = 1;
 			} else {
-				edges [1] = mi.edge;
-				edgePoints [1] = mi.edgePoint;
-				contactPoints [1] = transform.InverseTransformPoint(mi.contactPoint);
+				contactInfos[1] = ci;
+				contactCount = 2;
 			}
-
-			return movement - movementLength;
-		} else {
-			transform.position += (Vector3)direction * movement;
-			return 0;
 		}
+
+		transform.position = newPosition;
+		return expectedPosition - newPosition;
 	}
 
-	private MoveInformation findCollision(Vector2 movement) {
+	private ContactInfo findContact(Vector2 movement) {
 		Vector2 start = transform.position;
-		Vector2 finish = (Vector2)transform.position + movement;
-		
-		Collider2D[] coll = Physics2D.OverlapAreaAll (start  - new Vector2 (radius + 1, radius + 1),
-		                                              finish + new Vector2 (radius + 1, radius + 1));
-		
-		EdgeCollider2D collided = null;
-		int edgeNo = -1;
-		Vector2 contactPoint = Vector2.zero;
-		
-		float t = 1;
-		for (int i = 0; i < coll.Length; i++) {
-			EdgeCollider2D edge = (EdgeCollider2D)coll [i];
-			
-			for (int j = 0; j < edge.points.Length - 1; j++) {
-				if((edge != edges[0] || j != edgePoints[0]) && (edge != edges[1] || j != edgePoints[1])) {
-					MovementResult mr = contactSolver.getFirstContact (start, 
-					                                                   finish, 
-					                                                   edge.transform.TransformPoint(edge.points[j] + edge.offset), 
-					                                                   edge.transform.TransformPoint(edge.points[j+1] + edge.offset), 
-					                                                   radius);
-					if (mr.hasContact && mr.ratio < t 
-					    && (edges[0] == null || Vector2.Distance(mr.contactPoint, globalContactPoint(0)) > 0.1f)
-					    && (edges[1] == null || Vector2.Distance(mr.contactPoint, globalContactPoint(1)) > 0.1f)) {
-						t = mr.ratio;
-						collided = edge;
-						edgeNo = j;
-						contactPoint = mr.contactPoint;
-					}				
+		Vector2 end = (Vector2)transform.position + movement;
+
+		Collider2D[] colliders = Physics2D.OverlapAreaAll (new Vector2 (Mathf.Min (start.x, end.x) - 1, Mathf.Min (start.y, end.y) - 1),
+		                                               new Vector2 (Mathf.Max (start.x, end.x) + 1, Mathf.Max (start.y, end.y) + 1));
+
+		float minDistance = Mathf.Infinity;
+		TrajectoryInfo minTi = null;
+		EdgeCollider2D minEdge = null;
+		int minPoint = -1;
+
+		for (int i = 0; i < colliders.Length; i++) {
+			EdgeCollider2D edge = (EdgeCollider2D)colliders[i];
+
+			for(int j = 0; j < edge.points.Length-1; j++) {
+				bool canCollide = (contactCount < 1 || contactInfos[0].acceptableEdge(edge, j))
+								&& (contactCount < 2 || contactInfos[1].acceptableEdge(edge, j))
+								&& tester != edge;
+
+				if(canCollide) {
+					TrajectoryInfo ti = contactSolver.getFirstContact(start,
+					                                                  end,
+					                                                  edge.transform.TransformPoint(edge.points[j]+edge.offset),
+					                                                  edge.transform.TransformPoint(edge.points[j+1]+edge.offset),
+					                                                  radius);
+
+					if(ti) {
+						float distance = Vector2.Distance(start, ti.getPosition());
+						if (distance < minDistance) {
+							minTi = ti;
+							minDistance = distance;
+							minEdge = edge;
+							minPoint = j;
+						}
+					}
 				}
 			}
 		}
-		if (t < 1) 
-			return new MoveInformation (collided, edgeNo, contactPoint, start, finish, t);
-		else 
-			return new MoveInformation();
+
+		if (minTi) {
+			return new ContactInfo(this, 
+			                       minTi.contactRatio,
+			                       minEdge,
+			                       minPoint,
+			                       minTi.side,
+			                       minTi.isEdgeContact,
+			                       minTi.angle);
+		} else {
+			return null;
+		}
 	}
 
 	void OnDrawGizmos() {
-		if (edges != null && edges.Length > 0) {
-			if(edges[0] != null) {
-				Gizmos.DrawSphere(globalFirstEdgePoint(0), 0.1f);
-				Gizmos.DrawSphere(globalSecondEdgePoint(0), 0.1f);
-				Gizmos.DrawSphere(globalContactPoint(0), 0.1f);
-				Gizmos.DrawRay(globalContactPoint(0), normal(0));
-			}
-
-			if(edges[1] != null) {
-				Gizmos.DrawSphere(globalFirstEdgePoint(1), 0.1f);
-				Gizmos.DrawSphere(globalSecondEdgePoint(1), 0.1f);
-				Gizmos.DrawSphere(globalContactPoint(1), 0.1f);
-				Gizmos.DrawRay(globalContactPoint(1), normal(1));
+		if (contactInfos != null && contactInfos.Length > 0) {
+			if(contactCount == 1) {
+				Gizmos.DrawSphere (contactInfos[0].getContactPoint(), 0.1f);
+				Gizmos.DrawSphere (contactInfos[0].getFirstEdgePoint(), 0.1f);
+				Gizmos.DrawSphere (contactInfos[0].getSecondEdgePoint(), 0.1f);
+			} else if(contactCount == 2) {
+				Gizmos.DrawSphere (contactInfos[1].getContactPoint(), 0.1f);
+				Gizmos.DrawSphere (contactInfos[1].getFirstEdgePoint(), 0.1f);
+				Gizmos.DrawSphere (contactInfos[1].getSecondEdgePoint(), 0.1f);
 			}
 		}
+
+		/*if (contactInfos != null && tester.enabled) {
+			Vector2 start = tester.transform.TransformPoint (tester.points [0] + tester.offset);
+			Vector2 end = tester.transform.TransformPoint (tester.points [1] + tester.offset);
+
+			ContactInfo ci = findContact (end - start);
+
+			if (ci) {
+				Gizmos.DrawSphere (ci.getPosition (), radius);
+				Gizmos.DrawSphere (ci.getContactPoint (), 0.1f);
+			}
+		}*/
 	}
 }
 
-public class MoveInformation {
+public class ContactInfo {
+	public CharacterMotor2D motor;
+
+	public float contactRatio;
 	public EdgeCollider2D edge;
 	public int edgePoint;
-	public Vector2 contactPoint;
-	public Vector2 start;
-	public Vector2 end;
-	public float ratio;
-	public bool hasContact;
+	public bool side;
 
-	public MoveInformation(EdgeCollider2D edge, int edgePoint, Vector2 contactPoint, Vector2 start, Vector2 end, float ratio) {
+	public bool isEdgeContact;
+	public float angle;
+
+	public ContactInfo(CharacterMotor2D motor, float contactRatio, EdgeCollider2D edge, int edgePoint, bool side, bool isEdgeContact, float angle) {
+		this.motor = motor;
+
+		this.contactRatio = contactRatio;
 		this.edge = edge;
 		this.edgePoint = edgePoint;
-		this.contactPoint = contactPoint; // !!! espace global
-		this.start = start;
-		this.end = end;
-		this.ratio = ratio;
-		this.hasContact = true;
+		this.side = side;
+
+		this.isEdgeContact = isEdgeContact;
+		this.angle = angle;
 	}
-	public MoveInformation() {
-		this.hasContact = false;
+
+	public Vector2 getNormal() {
+		return (getPosition () - getContactPoint ()).normalized;
+	}
+	public Vector2 getMainTangent() {
+		return (getSecondEdgePoint() - getFirstEdgePoint()).normalized;
+	}
+
+	public Vector2 getFirstEdgePoint() {
+		return edge.transform.TransformPoint (edge.points [edgePoint] + edge.offset);
+	}
+	public Vector2 getSecondEdgePoint() {
+		return edge.transform.TransformPoint (edge.points [edgePoint+1] + edge.offset);
+	}
+
+	public Vector2 getPosition() {
+		Vector2 A = getFirstEdgePoint ();
+		Vector2 B = getSecondEdgePoint ();
+		float R = motor.radius;
+
+		if (isEdgeContact && contactRatio == 1)
+			return B + R*(Vector2)(Quaternion.AngleAxis (-angle, new Vector3 (0, 0, 1)) * new Vector2 (-(B - A).normalized.y, (B - A).normalized.x));
+		else if (isEdgeContact) 
+			return A + R*(Vector2)(Quaternion.AngleAxis (angle, new Vector3 (0, 0, 1)) * new Vector2 (-(B - A).normalized.y, (B - A).normalized.x));
+		else 
+			return A + contactRatio * (B - A) + (side?1:-1) * R * new Vector2 (-(B - A).normalized.y, (B - A).normalized.x);
+	}
+	public Vector2 getContactPoint() {
+		Vector2 A = getFirstEdgePoint ();
+		Vector2 B = getSecondEdgePoint ();
+		return A + contactRatio * (B - A);
+	}
+
+	public bool acceptableEdge(EdgeCollider2D e, int n) {
+		return edge != e || edgePoint != n;
+	}
+
+	public static implicit operator bool(ContactInfo d){
+		return d != null;
 	}
 }

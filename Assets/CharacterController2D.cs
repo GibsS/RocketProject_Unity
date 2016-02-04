@@ -19,9 +19,9 @@ public class CharacterController2D : MonoBehaviour {
 	}
 
 	void Update () {
-		isGrounded = motor.edges [0] != null && Vector2.Dot (motor.normal (0), Vector2.up) > 0
-			|| motor.edges [1] != null && Vector2.Dot (motor.normal (1), Vector2.up) > 0;
-
+		isGrounded = (motor.contactCount >= 1 && Vector2.Dot (Vector2.up, motor.contactInfos[0].getNormal()) > 0)
+					 || (motor.contactCount >= 2 && Vector2.Dot (Vector2.up, motor.contactInfos[1].getNormal()) > 0);
+		
 		speed += gravity * Time.deltaTime;
 
 		if (isGrounded) {
@@ -46,30 +46,28 @@ public class CharacterController2D : MonoBehaviour {
 
 		Vector2 movement = speed * Time.deltaTime;
 		while (Vector2.Distance(movement, Vector2.zero) > 0.001f) {
-			movement = motor.movement (movement);
-			if(motor.edges[0] != null)
-				speed -= Vector2.Dot(speed, motor.normal(0)) * motor.normal(0);
-			if(motor.edges[1] != null) 
-				speed -= Vector2.Dot(speed, motor.normal(1)) * motor.normal(1);
+			movement = motor.move (movement);
+			if(motor.contactCount >= 1)
+				speed -= Vector2.Dot(speed, motor.contactInfos[0].getNormal()) * motor.contactInfos[0].getNormal();
 		}
 
 		/*if (Input.GetKeyDown (KeyCode.Q)) {
-			motor.movement(-Vector2.right/3);
+			motor.move(-Vector2.right/3);
 		}
 		if (Input.GetKeyDown (KeyCode.D)) {
-			motor.movement (-Vector2.left/3);
+			motor.move (-Vector2.left/3);
 		}
 		if (Input.GetKeyDown (KeyCode.Z)) {
-			motor.movement(Vector2.up/3);
+			motor.move(Vector2.up/3);
 		}
 		if (Input.GetKeyDown (KeyCode.S)) {
-			motor.movement (-Vector2.up/3);
+			motor.move (-Vector2.up / 3);
 		}*/
 	}
 
 	void OnDrawGizmos() {
-		if(motor != null)
-			Gizmos.DrawSphere (transform.position, motor.radius);
+		//if(motor != null)
+		//	Gizmos.DrawSphere (transform.position, motor.radius);
 	}
 }
 

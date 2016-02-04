@@ -51,18 +51,10 @@ public class Test : MonoBehaviour {
 		Gizmos.DrawLine (O, E);
 		Gizmos.DrawLine (A, B);
 
-		MovementResult contact = cs.getFirstContact (O, E, A, B, R);
-		if (contact.hasContact) {
-			Gizmos.DrawSphere (contact.getContactPosition (), R);
-			Gizmos.DrawSphere(contact.contactPoint, 0.1f);
+		TrajectoryInfo contact = cs.getFirstContact (O, E, A, B, R);
+		if (contact) {
+			Gizmos.DrawSphere (contact.getPosition(), R);
+			Gizmos.DrawSphere (contact.A + contact.contactRatio*(contact.B - contact.A), 0.1f);
 		}
-	}
-
-	void test4() {
-		Vector2 A = transform.TransformPoint(coll [0].points [0]);
-		Vector2 B = transform.TransformPoint(coll [0].points [1]);
-		Vector2 O = transform.TransformPoint(coll [0].points [0]);
-
-
 	}
 }
