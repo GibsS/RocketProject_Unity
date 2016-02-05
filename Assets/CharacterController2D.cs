@@ -44,6 +44,18 @@ public class CharacterController2D : MonoBehaviour {
 			}
 		}
 
+		if (motor.contactCount >= 1) {
+			Vector2 normal = motor.contactInfos [0].getNormal ();
+			if (Vector2.Dot (normal, speed) < 0)
+				speed -= Vector2.Dot (speed, normal) * normal;
+		}
+
+		if (motor.contactCount == 2) {
+			Vector2 normal = motor.contactInfos [1].getNormal ();
+			if (Vector2.Dot (normal, speed) < 1)
+				speed -= Vector2.Dot (speed, normal) * normal;
+		}
+
 		Vector2 movement = speed * Time.deltaTime;
 		while (Vector2.Distance(movement, Vector2.zero) > 0.001f) {
 			movement = motor.move (movement);
@@ -65,9 +77,5 @@ public class CharacterController2D : MonoBehaviour {
 		}*/
 	}
 
-	void OnDrawGizmos() {
-		//if(motor != null)
-		//	Gizmos.DrawSphere (transform.position, motor.radius);
-	}
 }
 

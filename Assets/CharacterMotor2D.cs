@@ -19,11 +19,48 @@ public class CharacterMotor2D : MonoBehaviour {
 		contactCount = 0;
 	}
 
+	/*public bool hasContact() {
+		return contactCount >= 1;
+	}
+	public int getContactCount() {
+		return contactCount;
+	}
+	public Vector2 getLeftTangent() {
+
+	}
+	public Vector2 getRightTangent() {
+
+	}
+	public Vector2 getLeftNormal() {
+
+	}
+	public Vector2 getRightNormal() {
+
+	}
+	public EdgeCollider2D getLeftEdgeCollider() {
+
+	}
+	public EdgeCollider2D getRightEdgeCollider() {
+		
+	}
+	public Vector2 getLeftFirstPointEdge() {
+
+	}
+	public Vector2 getLeftSecondPointEdge() {
+
+	}
+	public Vector2 getRightFirstPointEdge() {
+		
+	}
+	public Vector2 getRightSecondPointEdge() {
+		
+	}*/
+
 	public Vector2 move(Vector2 movement) {
 		if (contactCount == 0) {
 			return free (movement);
 		} else if (contactCount == 1) {
-			if(Vector2.Dot(movement, contactInfos[0].getNormal()) > 0) {
+			if(Vector2.Angle(movement, contactInfos[0].getNormal()) < 88) {
 				return free (movement);
 			} else {
 				if(contactInfos[0].isEdgeContact) {
@@ -47,17 +84,137 @@ public class CharacterMotor2D : MonoBehaviour {
 				tangent1 = -tangent1;
 			}
 
-			bool area1 = Vector2.Dot (movement, normal1) > 0;
-			bool area2 = Vector2.Dot (movement, normal2) > 0;
+			bool area1 = Vector2.Angle (movement, normal1) < 88;
+			bool area2 = Vector2.Angle (movement, normal2) < 88;
 			if(area1 && area2) {
 				return free (movement);
-			} else if(area1 && Vector2.Dot (movement, tangent2) > 0) {
+			} else if(Vector2.Dot (movement, normal1) > 0 && Vector2.Dot (movement, tangent2) > 0) {
 				return line (1, Vector2.Dot(movement, contactInfos[1].getMainTangent()));
-			} else if(area2 && Vector2.Dot (movement, tangent1) > 0) {
+			} else if(Vector2.Dot (movement, normal2) > 0 && Vector2.Dot (movement, tangent1) > 0) {
 				return line (0, Vector2.Dot(movement, contactInfos[0].getMainTangent()));
 			} else {
 				return Vector2.zero;
 			}
+		}
+	}
+
+	// Not tested..
+	public Vector2 lineMove(int contactId, float movement) {
+		Vector2 normal1 = contactInfos[0].getNormal();
+		Vector2 normal2 = contactInfos[1].getNormal();
+		
+		Vector2 tangent1 = contactInfos[0].getMainTangent();
+		Vector2 tangent2 = contactInfos[1].getMainTangent();
+		
+		if(Vector2.Dot(normal1, tangent2) < 0) {
+			tangent2 = -tangent2;
+		}
+		if(Vector2.Dot(normal2, tangent1) < 0) {
+			tangent1 = -tangent1;
+		}
+
+		if (contactId == 0 && contactCount >= 1) {
+			if(contactCount == 2) {
+				if(Vector2.Dot(normal2, movement*tangent1) < 0) {
+					return Vector2.zero;
+				} else {
+					return line(0, movement);
+				}
+			} else {
+				return line (0, movement);
+			}
+		} else if (contactId == 1 && contactCount == 2) {
+			if(Vector2.Dot(normal1, movement*tangent2) < 0) {
+				return Vector2.zero;
+			} else {
+				return line(1, movement);
+			}
+		} else {
+			return Vector2.zero;
+		}
+	}
+	// Not tested..
+	public Vector2 leftLineMove(float movement) {
+		if (contactCount == 1) {
+			Vector2 normal = contactInfos[0].getNormal();
+			Vector2 left = new Vector2(-normal.y, normal.x);
+			Vector2 tangent = contactInfos[0].getMainTangent();
+			if(Vector2.Dot (left, tangent) > 0) {
+				return line (0, movement);
+			} else {
+				return line (0, -movement);
+			}
+		} else if (contactCount == 2) {
+			Vector2 normal1 = contactInfos[0].getNormal();
+			Vector2 normal2 = contactInfos[1].getNormal();
+			
+			Vector2 tangent1 = contactInfos[0].getMainTangent();
+			Vector2 tangent2 = contactInfos[1].getMainTangent();
+
+			Vector2 outwardTangent1 = tangent1;
+			if(Vector2.Dot(normal2, tangent1) < 0) {
+				outwardTangent1 = -tangent1;
+			}
+
+			if(Vector2.Dot (outwardTangent1, normal2) > 0) {
+				Vector2 left = new Vector2(-normal1.y, normal1.x);
+				if(Vector2.Dot (left, tangent1) > 0) {
+					return line (0, movement);
+				} else {
+					return line (0, -movement);
+				}
+			} else {
+				Vector2 left = new Vector2(-normal2.y, normal2.x);
+				if(Vector2.Dot (left, tangent2) > 0) {
+					return line (1, movement);
+				} else {
+					return line (1, -movement);
+				}
+			}
+		} else {
+			return Vector2.zero;
+		}
+	}
+	// Not tested..
+	public Vector2 rightLineMove(float movement) {
+		if (contactCount == 1) {
+			Vector2 normal = contactInfos [0].getNormal ();
+			Vector2 right = new Vector2 (normal.y, -normal.x);
+			Vector2 tangent = contactInfos [0].getMainTangent ();
+			if (Vector2.Dot (right, tangent) > 0) {
+				return line (0, movement);
+			} else {
+				return line (0, -movement);
+			}
+		} else if (contactCount == 2) {
+			Vector2 normal1 = contactInfos [0].getNormal ();
+			Vector2 normal2 = contactInfos [1].getNormal ();
+			
+			Vector2 tangent1 = contactInfos [0].getMainTangent ();
+			Vector2 tangent2 = contactInfos [1].getMainTangent ();
+			
+			Vector2 outwardTangent1 = tangent1;
+			if (Vector2.Dot (normal2, tangent1) < 0) {
+				outwardTangent1 = -tangent1;
+			}
+			
+			if (Vector2.Dot (outwardTangent1, normal2) > 0) {
+				Vector2 right = new Vector2 (normal1.y, -normal1.x);
+				if (Vector2.Dot (right, tangent1) > 0) {
+					return line (0, movement);
+				} else {
+					return line (0, -movement);
+				}
+			} else {
+				Vector2 right = new Vector2 (normal2.y, -normal2.x);
+				if (Vector2.Dot (right, tangent2) > 0) {
+					return line (1, movement);
+				} else {
+					return line (1, -movement);
+				}
+			}
+		} else {
+			return Vector2.zero;
 		}
 	}
 
@@ -200,18 +357,6 @@ public class CharacterMotor2D : MonoBehaviour {
 				Gizmos.DrawSphere (contactInfos[1].getSecondEdgePoint(), 0.1f);
 			}
 		}
-
-		/*if (contactInfos != null && tester.enabled) {
-			Vector2 start = tester.transform.TransformPoint (tester.points [0] + tester.offset);
-			Vector2 end = tester.transform.TransformPoint (tester.points [1] + tester.offset);
-
-			ContactInfo ci = findContact (end - start);
-
-			if (ci) {
-				Gizmos.DrawSphere (ci.getPosition (), radius);
-				Gizmos.DrawSphere (ci.getContactPoint (), 0.1f);
-			}
-		}*/
 	}
 }
 

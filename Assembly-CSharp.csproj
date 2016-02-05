@@ -48,6 +48,7 @@
      <Compile Include="Assets\CharacterController2D.cs" />
      <Compile Include="Assets\CharacterMotor2D.cs" />
      <Compile Include="Assets\ContactSolver.cs" />
+     <Compile Include="Assets\RocketController.cs" />
      <Compile Include="Assets\Test.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
