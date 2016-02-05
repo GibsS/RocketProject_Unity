@@ -19,16 +19,16 @@ public class CharacterController2D : MonoBehaviour {
 	}
 
 	void Update () {
-		isGrounded = (motor.contactCount >= 1 && Vector2.Dot (Vector2.up, motor.contactInfos[0].getNormal()) > 0)
-					 || (motor.contactCount >= 2 && Vector2.Dot (Vector2.up, motor.contactInfos[1].getNormal()) > 0);
+		isGrounded = (motor.getContactCount() >= 1 && Vector2.Angle (Vector2.up, motor.getLeftNormal()) < 88)
+			|| (motor.getContactCount() >= 2 && Vector2.Angle (Vector2.up, motor.getRightNormal()) < 88);
 		
 		speed += gravity * Time.deltaTime;
 
 		if (isGrounded) {
-			if(Input.GetKey(KeyCode.Q)) {
-				speed.x = -walkSpeed;
-			} else if(Input.GetKey(KeyCode.D)) {
-				speed.x = walkSpeed;
+			if(Input.GetKey(KeyCode.Q) && Vector2.Angle (Vector2.up, motor.getLeftNormal()) < 88) {
+				speed = walkSpeed * motor.getLeftTangent();
+			} else if(Input.GetKey(KeyCode.D) && Vector2.Angle (Vector2.up, motor.getRightNormal()) < 88) {
+				speed = walkSpeed * motor.getRightTangent();
 			} else {
 				speed = Vector2.zero;
 			}
@@ -44,14 +44,14 @@ public class CharacterController2D : MonoBehaviour {
 			}
 		}
 
-		if (motor.contactCount >= 1) {
-			Vector2 normal = motor.contactInfos [0].getNormal ();
+		if (motor.getContactCount() >= 1) {
+			Vector2 normal = motor.getLeftNormal();
 			if (Vector2.Dot (normal, speed) < 0)
 				speed -= Vector2.Dot (speed, normal) * normal;
 		}
 
-		if (motor.contactCount == 2) {
-			Vector2 normal = motor.contactInfos [1].getNormal ();
+		if (motor.getContactCount() == 2) {
+			Vector2 normal = motor.getRightNormal();
 			if (Vector2.Dot (normal, speed) < 1)
 				speed -= Vector2.Dot (speed, normal) * normal;
 		}
@@ -59,8 +59,8 @@ public class CharacterController2D : MonoBehaviour {
 		Vector2 movement = speed * Time.deltaTime;
 		while (Vector2.Distance(movement, Vector2.zero) > 0.001f) {
 			movement = motor.move (movement);
-			if(motor.contactCount >= 1)
-				speed -= Vector2.Dot(speed, motor.contactInfos[0].getNormal()) * motor.contactInfos[0].getNormal();
+			if(motor.getContactCount() >= 1)
+				speed -= Vector2.Dot(speed, motor.getLeftNormal()) * motor.getLeftNormal();
 		}
 
 		/*if (Input.GetKeyDown (KeyCode.Q)) {

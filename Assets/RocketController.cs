@@ -32,7 +32,7 @@ public class RocketController : MonoBehaviour {
 	}
 	
 	void Update () {
-		bool isFree = motor.contactCount == 0;
+		/*bool isFree = motor.contactCount == 0;
 
 		bool isGrounded = (motor.contactCount >= 1 && Vector2.Angle (Vector2.up, motor.contactInfos[0].getNormal()) < groundAngle)
 			|| (motor.contactCount >= 2 && Vector2.Angle (Vector2.up, motor.contactInfos[1].getNormal()) < groundAngle);
@@ -90,6 +90,6 @@ public class RocketController : MonoBehaviour {
 			movement = motor.move (movement);
 			if(motor.contactCount >= 1)
 				speed -= Vector2.Dot(speed, motor.contactInfos[0].getNormal()) * motor.contactInfos[0].getNormal();
-		}
+		}*/
 	}
 }
