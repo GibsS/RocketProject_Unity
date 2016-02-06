@@ -1,10 +1,9 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="d:\tmp\Rocket Project\Assets\CharacterController2D.cs">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\RocketController.cs">
     <Files>
-      <File FileName="Assets\CharacterMotor2D.cs" Line="146" Column="9" />
-      <File FileName="d:\tmp\Rocket Project\Assets\CharacterController2D.cs" Line="23" Column="53" />
-      <File FileName="d:\tmp\Rocket Project\Assets\RocketController.cs" Line="40" Column="23" />
+      <File FileName="Assets\RocketController.cs" Line="101" Column="31" />
+      <File FileName="d:\tmp\Rocket Project\Assets\CharacterController2D.cs" Line="27" Column="17" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

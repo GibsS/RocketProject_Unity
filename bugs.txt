@@ -1,0 +1,5 @@
+- When the character has 2 contacts and moves, he can sometimes (rarely) clip through one of the contact. 
+Solution : after leaving the 2 contact position, check if the position is coherent with the two contact (no clipping !)
+- When the character is in a pit with 2 contacts, can only escape by one direction 
+Update : not only in pit
+Solution : Not certain, probably due to incoherent position state, could be a motor problem (happens for both controller)
