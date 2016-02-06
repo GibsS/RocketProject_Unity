@@ -52,7 +52,7 @@ public class CharacterController2D : MonoBehaviour {
 
 		if (motor.getContactCount() == 2) {
 			Vector2 normal = motor.getRightNormal();
-			if (Vector2.Dot (normal, speed) < 1)
+			if (Vector2.Dot (normal, speed) < 0)
 				speed -= Vector2.Dot (speed, normal) * normal;
 		}
 

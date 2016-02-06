@@ -112,7 +112,7 @@ public class RocketController : MonoBehaviour {
 		bool rd = Input.GetKey (KeyCode.D);
 		bool ud = Input.GetKey (KeyCode.Z);
 		bool bd = Input.GetKey (KeyCode.S);
-		bool jump = Input.GetKey (KeyCode.Space);
+		bool jump = Input.GetKeyDown (KeyCode.Space);
 
 		if (positionState == 0) { // free
 			Vector2 drag = - speed * airDrag * Time.deltaTime;
@@ -252,7 +252,7 @@ public class RocketController : MonoBehaviour {
 		
 		if (contactCount == 2) {
 			Vector2 normal = motor.getRightNormal();
-			if (Vector2.Dot (normal, speed) < 1)
+			if (Vector2.Dot (normal, speed) < 0)
 				speed -= Vector2.Dot (speed, normal) * normal;
 		}
 		

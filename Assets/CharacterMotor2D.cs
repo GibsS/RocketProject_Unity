@@ -8,7 +8,7 @@ public class CharacterMotor2D : MonoBehaviour {
 	public float radius;
 
 	ContactInfo[] contactInfos;
-	int contactCount;
+	public int contactCount;
 
 	int left;
 	int right;
@@ -103,6 +103,8 @@ public class CharacterMotor2D : MonoBehaviour {
 	}
 
 	public Vector2 move(Vector2 movement) {
+		
+		//Debug.Log (movement);
 		if (contactCount == 0) {
 			return free (movement);
 		} else if (contactCount == 1) {
@@ -117,11 +119,9 @@ public class CharacterMotor2D : MonoBehaviour {
 				}
 			}
 		} else {
+
 			Vector2 normal1 = contactInfos[0].getNormal();
 			Vector2 normal2 = contactInfos[1].getNormal();
-
-			/*Vector2 tangent1 = contactInfos[0].getMainTangent();
-			Vector2 tangent2 = contactInfos[1].getMainTangent();*/
 
 			Vector2 tangent1 = new Vector2(-normal1.y, normal1.x);
 			Vector2 tangent2 = new Vector2(-normal2.y, normal2.x);
@@ -138,15 +138,23 @@ public class CharacterMotor2D : MonoBehaviour {
 			if(area1 && area2) {
 				return free (movement);
 			} else if(Vector2.Dot (movement, normal1) > 0 && Vector2.Dot (movement, tangent2) > 0) {
-				if(!contactInfos[1].isEdgeContact)
-					return line (1, Vector2.Dot(movement, contactInfos[1].getMainTangent()));
-				else 
-					return free (movement - Vector2.Dot (movement, normal2)*normal2);
+				if(Mathf.Abs(Vector2.Dot(movement, contactInfos[1].getMainTangent())) > 0.0001f) {
+					if(!contactInfos[1].isEdgeContact)
+						return line (1, Vector2.Dot(movement, contactInfos[1].getMainTangent()));
+					else 
+						return free (movement - Vector2.Dot (movement, normal2)*normal2);
+				} else {
+					return Vector2.zero;
+				}
 			} else if(Vector2.Dot (movement, normal2) > 0 && Vector2.Dot (movement, tangent1) > 0) {
-				if(!contactInfos[0].isEdgeContact)
-					return line (0, Vector2.Dot(movement, contactInfos[0].getMainTangent()));
-				else
-					return free (movement - Vector2.Dot (movement, normal1)*normal1);
+				if(Mathf.Abs(Vector2.Dot(movement, contactInfos[0].getMainTangent())) > 0.0001f) {
+					if(!contactInfos[0].isEdgeContact)
+						return line (0, Vector2.Dot(movement, contactInfos[0].getMainTangent()));
+					else
+						return free (movement - Vector2.Dot (movement, normal1)*normal1);
+				} else {
+					return Vector2.zero;
+				}
 			} else {
 				return Vector2.zero;
 			}
