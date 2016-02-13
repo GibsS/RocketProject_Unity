@@ -28,6 +28,20 @@ public class CharacterMotor2D : MonoBehaviour {
 	public bool hasContact() {
 		return contactCount >= 1;
 	}
+	public bool isLeftContactEdge() {
+		if (left == 0) {
+			return contactInfos[0].isEdgeContact;
+		} else {
+			return contactInfos[1].isEdgeContact;
+		}
+	}
+	public bool isRightContactEdge() {
+		if (right == 0) {
+			return contactInfos[0].isEdgeContact;
+		} else {
+			return contactInfos[1].isEdgeContact;
+		}
+	}
 	public int getContactCount() {
 		return contactCount;
 	}

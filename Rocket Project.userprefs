@@ -1,12 +1,6 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets\RocketController.cs">
-    <Files>
-      <File FileName="Assets\RocketController.cs" Line="41" Column="2" />
-      <File FileName="Assets\CharacterMotor2D.cs" Line="429" Column="5" />
-      <File FileName="Assets\Fuel.cs" Line="9" Column="32" />
-    </Files>
-  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workspace />
+  <MonoDevelop.Ide.Workbench />
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore />
   </MonoDevelop.Ide.DebuggingService.Breakpoints>

@@ -45,13 +45,13 @@
 	</Reference>
   </ItemGroup>
   <ItemGroup>
-     <Compile Include="Assets\CharacterController2D.cs" />
-     <Compile Include="Assets\CharacterMotor2D.cs" />
-     <Compile Include="Assets\ContactSolver.cs" />
-     <Compile Include="Assets\Fuel.cs" />
-     <Compile Include="Assets\Pickup.cs" />
-     <Compile Include="Assets\RocketController.cs" />
-     <Compile Include="Assets\Test.cs" />
+     <Compile Include="Assets\Scripts\Character controller\CharacterController2D.cs" />
+     <Compile Include="Assets\Scripts\Character controller\CharacterMotor2D.cs" />
+     <Compile Include="Assets\Scripts\Character controller\ContactSolver.cs" />
+     <Compile Include="Assets\Scripts\Character controller\RocketController.cs" />
+     <Compile Include="Assets\Scripts\Pick up\Fuel.cs" />
+     <Compile Include="Assets\Scripts\Pick up\Pickup.cs" />
+     <Compile Include="Assets\Scripts\Test\Test.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>
