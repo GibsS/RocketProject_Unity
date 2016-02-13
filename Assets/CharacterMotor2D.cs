@@ -400,6 +400,7 @@ public class CharacterMotor2D : MonoBehaviour {
 		int minPoint = -1;
 
 		for (int i = 0; i < colliders.Length; i++) {
+			if(colliders[i].GetType() == typeof(EdgeCollider2D)) {
 			EdgeCollider2D edge = (EdgeCollider2D)colliders[i];
 
 			for(int j = 0; j < edge.points.Length-1; j++) {
@@ -424,6 +425,7 @@ public class CharacterMotor2D : MonoBehaviour {
 						}
 					}
 				}
+			}
 			}
 		}
 
