@@ -27,14 +27,17 @@ public class RocketController : MonoBehaviour {
 	public float groundDrag;
 
 	// Rocket
-	public float rocketSpeedPerUnit;
-	public float[] rocketForcePerUnit;
 	public float[] minRocketForce;
+	public float[] maxRocketForce;
+
+	public float minRocketSpeed;
 	public float maxRocketSpeed;
-	public float maxRocketForce;
+
+	public float rocketRadius;
 
 	public float maxFuel;
-	public float fuelPerNewton;
+	public float fuelPerForce;
+	public float terminalRocketSpeed;
 
 	CharacterMotor2D motor;
 	
@@ -43,8 +46,8 @@ public class RocketController : MonoBehaviour {
 	
 	Vector2 speed;
 
-	//bool jumping;
-	//float lastJump;
+	bool jumping;
+	float lastJump;
 
 	void Start () {
 		motor = GetComponent<CharacterMotor2D> ();
@@ -71,9 +74,10 @@ public class RocketController : MonoBehaviour {
 		if (rocketLevel >= 1 && Input.GetMouseButtonDown(1)) {
 			rocketLevel --;
 			GameObject rocket = (GameObject)Instantiate(Resources.Load ("Prefabs/Rocket"));
-			rocket.GetComponent<Rigidbody2D>().velocity = 
-				(Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position).normalized 
-					* Mathf.Max(rocketSpeedPerUnit*Vector2.Distance(Camera.main.ScreenToWorldPoint(Input.mousePosition), transform.position), maxRocketSpeed);
+			Vector2 direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+			float distance = Vector2.Distance(Camera.main.ScreenToWorldPoint(Input.mousePosition), transform.position);
+			float strength = minRocketSpeed + (maxRocketSpeed - minRocketSpeed) * distance/rocketRadius;
+			rocket.GetComponent<Rigidbody2D>().velocity = direction.normalized * Mathf.Min(strength, maxRocketSpeed);
 			rocket.transform.position = transform.position;
 		}
 	}
@@ -121,9 +125,9 @@ public class RocketController : MonoBehaviour {
 
 		// gravity
 		bool applyGrav = contactCount == 0;
-		applyGrav |= contactCount == 1 && (leftWall || (leftCeiling && (oldSpeedNorm < ceilingDropOffSpeed || !stick)));
-		applyGrav |= contactCount == 2 && (leftWall || (leftCeiling && (oldSpeedNorm < ceilingDropOffSpeed || !stick)))
-									 && (rightWall || (rightCeiling && (oldSpeedNorm < ceilingDropOffSpeed || !stick)));
+		applyGrav |= contactCount == 1 && ((leftWall && motor.isLeftContactEdge()) || (leftCeiling && (oldSpeedNorm < ceilingDropOffSpeed || !stick)));
+		applyGrav |= contactCount == 2 && ((leftWall && motor.isLeftContactEdge()) || (leftCeiling && (oldSpeedNorm < ceilingDropOffSpeed || !stick)))
+									 && ((rightWall && motor.isRightContactEdge()) || (rightCeiling && (oldSpeedNorm < ceilingDropOffSpeed || !stick)));
 		if (applyGrav) {
 			speed += gravity * Time.deltaTime;
 		} else if (stick && leftCeiling) {
@@ -199,39 +203,47 @@ public class RocketController : MonoBehaviour {
 		}
 
 		// nudge
-		if (contactCount == 0) {
-			if (ld && oldSpeed.x > -maxWalkSpeed) {
-				speed += - nudge * Vector2.right * Time.deltaTime;
-			} else if (rd && oldSpeed.x < maxWalkSpeed) {
-				speed += nudge * Vector2.right * Time.deltaTime;
-			}
+		if (ld && !rd && (contactCount == 0 && oldSpeed.x > -maxWalkSpeed || contactCount == 1 && !stick && !leftGround)) {
+			speed += - nudge * Vector2.right * Time.deltaTime;
+		}
+		if (rd && !ld && (contactCount == 0 && rd && !ld && oldSpeed.x < maxWalkSpeed || contactCount == 1 && !stick && !leftGround)) {
+			speed += nudge * Vector2.right * Time.deltaTime;
 		}
 
-		/*if (contactCount >= 1) {
+		if (contactCount >= 1) {
 			jumping = false;
 		}
 
 		if (jumping && Input.GetKeyUp (KeyCode.Space) && Time.time - lastJump < maxJumpStop && speed.y > jumpSpeed / 2) {
-			speed -= Vector2.up * jumpSpeed/3;
+			speed -= Vector2.up * jumpSpeed/2;
 			jumping = false;
-		}*/
+		}
 
 		// jump
 		if (jump && contactCount >= 1) {
-			//lastJump = Time.time;
-			//jumping = true;
-			speed += jumpSpeed * (Vector2.Angle (leftNormal, Vector2.up) < Vector2.Angle (rightNormal, Vector2.up) ? 
+			if(leftGround || rightGround) {
+				lastJump = Time.time;
+				jumping = true;
+				speed += jumpSpeed * Vector2.up;
+			} else
+				speed += jumpSpeed * (Vector2.Angle (leftNormal, Vector2.up) < Vector2.Angle (rightNormal, Vector2.up) ? 
 			                      	leftNormal : rightNormal);
 		} 
 
 		// rocket influence
-		if (Input.GetMouseButton (0) && fuel > 0 && oldSpeedNorm < maxWalkSpeed) {
-			float force = Mathf.Min(minRocketForce[rocketLevel] +rocketForcePerUnit[rocketLevel]*Vector2.Distance(Camera.main.ScreenToWorldPoint(Input.mousePosition), transform.position), maxRocketForce) * Time.deltaTime;
-			force = Mathf.Min (fuel/fuelPerNewton, force);
-			speed += (Vector2)(Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position).normalized 
-				* force ;
+		if (Input.GetMouseButton (0) && fuel > 0) {
+			Vector2 direction = Camera.main.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+			float distance = Vector2.Distance(Camera.main.ScreenToWorldPoint(Input.mousePosition), transform.position);
+			float strength = minRocketForce[rocketLevel] + (maxRocketForce[rocketLevel] - minRocketForce[rocketLevel]) * distance/rocketRadius;
 
-			fuel -= force * fuelPerNewton;
+			float force = Mathf.Min(strength, maxRocketForce[rocketLevel]) * Time.deltaTime;
+			force = Mathf.Min (fuel/fuelPerForce, force);
+			float projectedSpeed = Vector2.Dot(oldSpeed, direction.normalized);
+			if(projectedSpeed < terminalRocketSpeed) {
+				//force = (1 - projectedSpeed/terminalRocketSpeed)*force;
+				speed += direction.normalized * force ;
+			} 
+			fuel -= force * fuelPerForce;
 		}
 
 		// stepping movement
@@ -248,7 +260,9 @@ public class RocketController : MonoBehaviour {
 		}
 		
 		Vector2 movement = speed * Time.deltaTime;
-		while (Vector2.Distance(movement, Vector2.zero) > 0.001f) {
+		int a = 0;
+		while (Vector2.Distance(movement, Vector2.zero) > 0.001f && a < 10) {
+			a++;
 			movement = motor.move (movement);
 
 			if(motor.getContactCount() >= 1)
@@ -256,6 +270,14 @@ public class RocketController : MonoBehaviour {
 			if(motor.getContactCount() == 2) 
 				speed -= Vector2.Dot(speed, motor.getRightNormal()) * motor.getRightNormal();
 
+			/*if(motor.getContactCount() >= 1 && motor.isLeftContactEdge()) {
+				speed = Vector2.zero;
+				movement = Vector2.zero;
+			}
+			if(motor.getContactCount() >= 1 && motor.isRightContactEdge()) {
+				speed = Vector2.zero;
+				movement = Vector2.zero;
+			}*/
 		}
 	}
 
@@ -288,11 +310,11 @@ public class RocketController : MonoBehaviour {
 	}
 	public void addRocket() {
 		rocketLevel ++;
-		if (rocketLevel >= rocketForcePerUnit.Length) {
-			rocketLevel = rocketForcePerUnit.Length -1;
+		if (rocketLevel >= minRocketForce.Length) {
+			rocketLevel = minRocketForce.Length -1;
 		}
 	}
 	public bool isMaxLevel() {
-		return rocketLevel == rocketForcePerUnit.Length - 1;
+		return rocketLevel == minRocketForce.Length - 1;
 	}
 }

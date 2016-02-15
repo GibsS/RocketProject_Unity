@@ -430,12 +430,16 @@ public class CharacterMotor2D : MonoBehaviour {
 					                                                  radius);
 
 					if(ti) {
-						float distance = Vector2.Distance(start, ti.getPosition());
-						if (distance < minDistance) {
-							minTi = ti;
-							minDistance = distance;
-							minEdge = edge;
-							minPoint = j;
+						Vector2 tangent = edge.points[j+1] - edge.points[j];
+						Vector2 normal = new Vector2(-tangent.y, tangent.x);
+						if(edge.gameObject.tag != "OneWay" || (ti.side && Vector2.Dot (movement, normal) < 0)) {
+							float distance = Vector2.Distance(start, ti.getPosition());
+							if (distance < minDistance) {
+								minTi = ti;
+								minDistance = distance;
+								minEdge = edge;
+								minPoint = j;
+							}
 						}
 					}
 				}
