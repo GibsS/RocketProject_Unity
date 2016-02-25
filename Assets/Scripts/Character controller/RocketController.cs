@@ -25,8 +25,6 @@ public class RocketController : MonoBehaviour {
 	public Vector2 gravity;
 	public float wallDrag;
 	public float wallGravMultiplier;
-	/*public float airDrag;
-	public float groundDrag;*/
 
 	// Rocket
 	public float[] minRocketForce;
@@ -135,13 +133,15 @@ public class RocketController : MonoBehaviour {
 		// walk condition :
 		bool acceptRightWalk = contactCount >= 1 && rightGround;
 		acceptRightWalk |= contactCount == 1 && rightWall && stick
-							&& (Vector2.Dot(rightTangent, Vector2.up) < 0 || !isLeftMovement);
-		acceptRightWalk |= contactCount >= 1 && rightCeiling && stick;
+							&& (Vector2.Dot(rightTangent, Vector2.up) < 0 || !isLeftMovement)
+							&& oldSpeedNorm > 0.1f;
+		acceptRightWalk |= contactCount >= 1 && rightCeiling && stick && oldSpeedNorm > 0.1f;
 		
 		bool acceptLeftWalk = contactCount >= 1 && leftGround;
 		acceptLeftWalk |= contactCount >= 1 && leftWall && stick 
-							&& (Vector2.Dot(leftTangent, Vector2.up) < 0 || isLeftMovement);
-		acceptLeftWalk |= contactCount >= 1 && leftCeiling && stick;
+							&& (Vector2.Dot(leftTangent, Vector2.up) < 0 || isLeftMovement)
+							&& oldSpeedNorm > 0.1f;
+		acceptLeftWalk |= contactCount >= 1 && leftCeiling && stick && oldSpeedNorm > 0.1f;
 
 		// nudge condition :
 		bool acceptLeftNudge = contactCount == 0;
@@ -169,8 +169,10 @@ public class RocketController : MonoBehaviour {
 			Debug.Log ("idling");
 			Vector2 delta = Vector2.zero;
 			if(isLeftMovement) {
+				Debug.Log ("idling right");
 				delta = idleAcceleration * rightTangent * Time.deltaTime;
 			} else {
+				Debug.Log("idling left");
 				delta = idleAcceleration * leftTangent * Time.deltaTime;
 			} 
 			
@@ -250,14 +252,24 @@ public class RocketController : MonoBehaviour {
 			speed -= Vector2.up * jumpSpeed/2;
 			jumping = false;
 		}
-		if (jump && contactCount >= 1) {
-			if(leftGround || rightGround) {
-				lastJump = Time.time;
-				jumping = true;
-				speed += jumpSpeed * Vector2.up;
-			} else
-				speed += jumpSpeed * (Vector2.Angle (leftNormal, Vector2.up) < Vector2.Angle (rightNormal, Vector2.up) ? 
-			                      	leftNormal : rightNormal);
+
+		if (jump) {
+			if(contactCount >= 1) {
+				if(leftGround || rightGround) {
+					lastJump = Time.time;
+					jumping = true;
+					speed += jumpSpeed * Vector2.up;
+				} else if(leftWall && !(goRight && acceptRightWalk || goLeft && acceptLeftWalk)) {
+				    if(Vector2.Dot(leftNormal, Vector2.right) > 0) {
+						speed = jumpSpeed * (Vector2.up*2 + Vector2.right).normalized;
+					} else {
+						speed = jumpSpeed * (Vector2.up*2 - Vector2.right).normalized;
+					}
+				} else {
+					speed += jumpSpeed * (Vector2.Angle (leftNormal, Vector2.up) < Vector2.Angle (rightNormal, Vector2.up) ? 
+				                      	leftNormal : rightNormal);
+				}
+			} 
 		} 
 
 		// rocket influence
@@ -274,6 +286,8 @@ public class RocketController : MonoBehaviour {
 			} 
 			fuel -= force * fuelPerForce;
 		}
+
+		//Debug.Log ("1 speed : " + speed.x + " " + speed.y);
 
 		// stepping movement
 		if (contactCount >= 1) {
@@ -295,24 +309,26 @@ public class RocketController : MonoBehaviour {
 			motor.move (0.1f * Time.deltaTime * Vector2.right);
 		}
 		if (leftCeiling && (!stick || (isLeftMovement && goRight) 
-		                    	   || (!isLeftMovement && goLeft)) 
-		    					   || oldSpeedNorm < ceilingDropOffSpeed) {
+		                    	   || (!isLeftMovement && goLeft) 
+		    					   || oldSpeedNorm < ceilingDropOffSpeed)) {
 			motor.move (-0.1f * Time.deltaTime * Vector2.up);
 		}
 
 		Vector2 movement = speed * Time.deltaTime;
+		//Debug.Log ("2 speed : " + speed.x + " " + speed.y + " " + (Vector2.Distance(movement, Vector2.zero) > 0.001f));
+
 		int a = 0;
 		while (Vector2.Distance(movement, Vector2.zero) > 0.001f && a < 10) {
 			a++;
 			movement = motor.move (movement);
 
-			if(motor.getContactCount() >= 1)
-				speed -= Vector2.Dot(speed, motor.getLeftNormal()) * motor.getLeftNormal();
-			if(motor.getContactCount() == 2) { 
-				if(Vector2.Angle(motor.getLeftTangent(), motor.getRightTangent()) < 95) {
+			if (motor.getContactCount () >= 1)
+				speed -= Vector2.Dot (speed, motor.getLeftNormal ()) * motor.getLeftNormal ();
+			if (motor.getContactCount () == 2) { 
+				if (Vector2.Angle (motor.getLeftTangent (), motor.getRightTangent ()) < 95) {
 					speed = Vector2.zero;
 				} else {
-					speed -= Vector2.Dot(speed, motor.getRightNormal()) * motor.getRightNormal();
+					speed -= Vector2.Dot (speed, motor.getRightNormal ()) * motor.getRightNormal ();
 				}
 			}
 		}
