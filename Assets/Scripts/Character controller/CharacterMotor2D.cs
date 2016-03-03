@@ -175,7 +175,7 @@ public class CharacterMotor2D : MonoBehaviour {
 		}
 	}
 
-	// Not tested..
+	/*// Not tested..
 	public Vector2 lineMove(int contactId, float movement) {
 		Vector2 normal1 = contactInfos[0].getNormal();
 		Vector2 normal2 = contactInfos[1].getNormal();
@@ -209,8 +209,7 @@ public class CharacterMotor2D : MonoBehaviour {
 		} else {
 			return Vector2.zero;
 		}
-	}
-	// Not tested..
+	}*/
 	public Vector2 leftLineMove(float movement) {
 		if (contactCount == 1) {
 			Vector2 normal = contactInfos[0].getNormal();
@@ -225,24 +224,17 @@ public class CharacterMotor2D : MonoBehaviour {
 			Vector2 normal1 = contactInfos[0].getNormal();
 			Vector2 normal2 = contactInfos[1].getNormal();
 			
-			Vector2 tangent1 = contactInfos[0].getMainTangent();
-			Vector2 tangent2 = contactInfos[1].getMainTangent();
+			Vector2 left1 = new Vector2(-normal1.y, normal1.x);
+			Vector2 left2 = new Vector2(-normal2.y, normal2.x);
 
-			Vector2 outwardTangent1 = tangent1;
-			if(Vector2.Dot(normal2, tangent1) < 0) {
-				outwardTangent1 = -tangent1;
-			}
-
-			if(Vector2.Dot (outwardTangent1, normal2) > 0) {
-				Vector2 left = new Vector2(-normal1.y, normal1.x);
-				if(Vector2.Dot (left, tangent1) > 0) {
+			if(Vector2.Dot (normal2, left1) > 0) { // left is 0
+				if(Vector2.Dot (left1, contactInfos[0].getMainTangent()) > 0) {
 					return line (0, movement);
 				} else {
 					return line (0, -movement);
 				}
-			} else {
-				Vector2 left = new Vector2(-normal2.y, normal2.x);
-				if(Vector2.Dot (left, tangent2) > 0) {
+			} else { // left is 1
+				if(Vector2.Dot (left2, contactInfos[1].getMainTangent()) > 0) {
 					return line (1, movement);
 				} else {
 					return line (1, -movement);
@@ -252,7 +244,6 @@ public class CharacterMotor2D : MonoBehaviour {
 			return Vector2.zero;
 		}
 	}
-	// Not tested..
 	public Vector2 rightLineMove(float movement) {
 		if (contactCount == 1) {
 			Vector2 normal = contactInfos [0].getNormal ();
@@ -264,27 +255,22 @@ public class CharacterMotor2D : MonoBehaviour {
 				return line (0, -movement);
 			}
 		} else if (contactCount == 2) {
-			Vector2 normal1 = contactInfos [0].getNormal ();
-			Vector2 normal2 = contactInfos [1].getNormal ();
-			
-			Vector2 tangent1 = contactInfos [0].getMainTangent ();
-			Vector2 tangent2 = contactInfos [1].getMainTangent ();
-			
-			Vector2 outwardTangent1 = tangent1;
-			if (Vector2.Dot (normal2, tangent1) < 0) {
-				outwardTangent1 = -tangent1;
-			}
-			
-			if (Vector2.Dot (outwardTangent1, normal2) > 0) {
-				Vector2 right = new Vector2 (normal1.y, -normal1.x);
-				if (Vector2.Dot (right, tangent1) > 0) {
+			Vector2 normal1 = contactInfos[0].getNormal();
+			Vector2 normal2 = contactInfos[1].getNormal();
+
+			Vector2 left1 = new Vector2(-normal1.y, normal1.x);
+
+			Vector2 right1 = new Vector2(normal1.y, -normal1.x);
+			Vector2 right2 = new Vector2(normal2.y, -normal2.x);
+
+			if(Vector2.Dot (normal2, right1) > 0) { // left is 0
+				if(Vector2.Dot (right1, contactInfos[0].getMainTangent()) > 0) {
 					return line (0, movement);
 				} else {
 					return line (0, -movement);
 				}
-			} else {
-				Vector2 right = new Vector2 (normal2.y, -normal2.x);
-				if (Vector2.Dot (right, tangent2) > 0) {
+			} else { // left is 1
+				if(Vector2.Dot (right2, contactInfos[1].getMainTangent()) > 0) {
 					return line (1, movement);
 				} else {
 					return line (1, -movement);
@@ -387,12 +373,12 @@ public class CharacterMotor2D : MonoBehaviour {
 			Vector2 left2 = new Vector2(-normal2.y, normal2.x);
 			Vector2 right2 = new Vector2(normal2.y, -normal2.x);
 
-			if(Vector2.Dot (normal2, left1) > 0) {
+			if(Vector2.Dot (normal2, left1) > 0) { // left is 0
 				leftTangent = left1;
 				rightTangent = right2;
 				left = 0;
 				right = 1;
-			} else {
+			} else { // left is 1
 				leftTangent = left2;
 				rightTangent = right1;
 				left = 1;

@@ -166,13 +166,13 @@ public class RocketController : MonoBehaviour {
 
 		// idle
 		if(acceptIdling) {
-			Debug.Log ("idling");
+			//Debug.Log ("idling");
 			Vector2 delta = Vector2.zero;
 			if(isLeftMovement) {
-				Debug.Log ("idling right");
+				//Debug.Log ("idling right");
 				delta = idleAcceleration * rightTangent * Time.deltaTime;
 			} else {
-				Debug.Log("idling left");
+				//Debug.Log("idling left");
 				delta = idleAcceleration * leftTangent * Time.deltaTime;
 			} 
 			
@@ -184,12 +184,12 @@ public class RocketController : MonoBehaviour {
 		}
 
 		if (applyGrav) {
-			Debug.Log ("gravity");
+			//Debug.Log ("gravity");
 			speed += gravity * Time.deltaTime;
 		} 
 
 		if (applyWallGrav) {
-			Debug.Log ("wall gravity");
+			//Debug.Log ("wall gravity");
 			if(Vector2.Dot (leftTangent, -Vector2.up) > 0) {
 				speed += Vector2.Dot(gravity * wallGravMultiplier, leftTangent) * leftTangent * Time.deltaTime;
 			} else if(Vector2.Dot (rightTangent, -Vector2.up) > 0) {
@@ -197,24 +197,24 @@ public class RocketController : MonoBehaviour {
 			}
 		}
 
-		if (applyWallGrav && !goLeft && !goRight) {
-			Debug.Log ("wall drag");
+		if (applyWallGrav && !(goLeft && acceptLeftWalk) && !(goRight && acceptRightWalk)) {
+			//Debug.Log ("wall drag");
 			speed += - wallDrag * speed * Time.deltaTime;
 		}
 
 		// nudge
 		if (nudgeLeft && acceptLeftNudge) {
-			Debug.Log ("nudge left");
+			//Debug.Log ("nudge left");
 			speed += - (nudge * Time.deltaTime) * Vector2.right;
 		}
 		if (nudgeRight && acceptRightNudge) {
-			Debug.Log ("nudge right");
+			//Debug.Log ("nudge right");
 			speed += (nudge * Time.deltaTime) * Vector2.right;
 		}
 
 		// walk right
 		if (goRight && acceptRightWalk) {
-			Debug.Log ("go right");
+			//Debug.Log ("go right");
 			if(isLeftMovement) {
 				Vector2 delta = switchAcceleration * rightTangent * Time.deltaTime;
 				
@@ -230,7 +230,7 @@ public class RocketController : MonoBehaviour {
 
 		// walk left
 		if (goLeft && acceptLeftWalk) {
-			Debug.Log ("go left");
+			//Debug.Log ("go left");
 			if(!isLeftMovement) {
 				Vector2 delta = switchAcceleration * leftTangent * Time.deltaTime;
 
@@ -260,6 +260,7 @@ public class RocketController : MonoBehaviour {
 					jumping = true;
 					speed += jumpSpeed * Vector2.up;
 				} else if(leftWall && !(goRight && acceptRightWalk || goLeft && acceptLeftWalk)) {
+					// Debug.Log ("wall drag jump");
 				    if(Vector2.Dot(leftNormal, Vector2.right) > 0) {
 						speed = jumpSpeed * (Vector2.up*2 + Vector2.right).normalized;
 					} else {
@@ -287,21 +288,7 @@ public class RocketController : MonoBehaviour {
 			fuel -= force * fuelPerForce;
 		}
 
-		//Debug.Log ("1 speed : " + speed.x + " " + speed.y);
-
 		// stepping movement
-		if (contactCount >= 1) {
-			Vector2 normal = motor.getLeftNormal();
-			if (Vector2.Dot (normal, speed) < 0)
-				speed -= Vector2.Dot (speed, normal) * normal;
-		}
-		
-		if (contactCount == 2) {
-			Vector2 normal = motor.getRightNormal();
-			if (Vector2.Dot (normal, speed) < 0)
-				speed -= Vector2.Dot (speed, normal) * normal;
-		}
-
 		if (nudgeLeft && acceptLeftNudge && (leftWall || leftCeiling)) {
 			motor.move (-0.1f * Time.deltaTime * Vector2.right);
 		}
@@ -315,23 +302,56 @@ public class RocketController : MonoBehaviour {
 		}
 
 		Vector2 movement = speed * Time.deltaTime;
-		//Debug.Log ("2 speed : " + speed.x + " " + speed.y + " " + (Vector2.Distance(movement, Vector2.zero) > 0.001f));
+		movement = adaptSpeedToContact (movement);
 
 		int a = 0;
 		while (Vector2.Distance(movement, Vector2.zero) > 0.001f && a < 10) {
 			a++;
 			movement = motor.move (movement);
 
-			if (motor.getContactCount () >= 1)
-				speed -= Vector2.Dot (speed, motor.getLeftNormal ()) * motor.getLeftNormal ();
-			if (motor.getContactCount () == 2) { 
-				if (Vector2.Angle (motor.getLeftTangent (), motor.getRightTangent ()) < 95) {
-					speed = Vector2.zero;
-				} else {
-					speed -= Vector2.Dot (speed, motor.getRightNormal ()) * motor.getRightNormal ();
-				}
+			movement = adaptSpeedToContact(movement);
+		}
+	}
+
+	public Vector2 adaptSpeedToContact(Vector2 movement) {
+		int contactCount = motor.getContactCount ();
+		if (contactCount == 1) {
+			Vector2 leftNormal = motor.getLeftNormal ();
+			Vector2 leftTangent = motor.getLeftTangent ();	
+
+			if (Vector2.Dot (leftNormal, movement) < 0) {
+				speed -= Vector2.Dot (speed, leftNormal) * leftNormal;
+				movement -= Vector2.Dot (movement, leftNormal) * leftNormal;
+			}
+		} else if (contactCount == 2) {
+			Vector2 leftNormal = motor.getLeftNormal ();
+			Vector2 rightNormal = motor.getRightNormal ();
+			Vector2 leftTangent = motor.getLeftTangent ();	
+			Vector2 rightTangent = motor.getRightTangent ();
+
+			float angle = Vector2.Angle(leftTangent, rightTangent);
+			float angleLeftTangent = Vector2.Angle(leftTangent, movement);
+			float angleRightTangent = Vector2.Angle(rightTangent, movement);
+			float angleLeftNormal = Vector2.Angle(leftNormal, movement);
+			float angleRightNormal = Vector2.Angle(rightNormal, movement);
+
+			if(angleLeftNormal < 88 && angleRightNormal < 88) {
+				Debug.Log ("outter");
+			} else if(Vector2.Dot (leftTangent, movement) > 0 && Vector2.Dot (rightNormal, movement) > 0 
+			          && angleLeftTangent < angleRightTangent) {
+				Debug.Log ("left projection");
+				speed -= Vector2.Dot (speed, leftNormal) * leftNormal;
+				movement -= Vector2.Dot (movement, leftNormal) * leftNormal;
+			} else if(Vector2.Dot (rightTangent, movement) > 0 && Vector2.Dot (leftNormal, movement) > 0
+			          && angleLeftTangent > angleRightTangent) {
+				Debug.Log ("right projection");
+				speed -= Vector2.Dot (speed, rightNormal) * rightNormal;
+				movement -= Vector2.Dot (movement, rightNormal) * rightNormal;
+			} else {
+				speed = Vector2.zero;
 			}
 		}
+		return movement;
 	}
 
 	public void kill() {
