@@ -17,6 +17,11 @@ public class TightRocketController : MonoBehaviour {
 	// Jumping
 	public float jumpSpeed;
 	public float maxJumpStop;
+
+	public int leapMaxFrame;
+	bool leaped;
+	int leapFrame;
+	Vector2 leapNormal;
 	
 	// Angle
 	public float groundAngle;
@@ -58,6 +63,15 @@ public class TightRocketController : MonoBehaviour {
 	
 	void Start () {
 		motor = GetComponent<CharacterMotor2D> ();
+
+		direction = Direction.free;
+		speed = Vector2.zero;
+		leftSpeed = 0;
+		rightSpeed = 0;
+
+		leaped = false;;
+		leapFrame = 0;
+		leapNormal = Vector2.zero;
 	}
 	
 	void Update () {
@@ -88,13 +102,6 @@ public class TightRocketController : MonoBehaviour {
 			rocket.transform.position = transform.position;
 		}
 	}
-
-	/* nudge fails sometimes
-	 * falls from the ceiling when running on the wall
-	 * add gravity in wall
-	 * add drag on wall
-	 * add rocket 
-	 * add ceiling fall off */
 
 	void movement() {
 		// Gathering information :
@@ -181,14 +188,35 @@ public class TightRocketController : MonoBehaviour {
 		bool applyGrav = contactCount == 0;
 		bool applyWallGrav = contactCount >= 1 && (leftWall || leftCeiling) && !leftGround && !rightGround;
 
+		bool applyDrag = !(acceptRightWalk && goRight) && !(acceptLeftWalk && goLeft) && leftWall;
+
 		// jump
-		if (contactCount >= 1 && Time.time - lastJump > maxJumpStop) {
+		if (leftGround && Time.time - lastJump > maxJumpStop) {
 			jumping = false;
 		}
-		if (jumping && Input.GetKeyUp (KeyCode.Space) && Time.time - lastJump < maxJumpStop && speed.y > 0) {
-			speed.y /= (1 + speed.y/jumpSpeed);
+		if (jumping && Input.GetKeyUp (KeyCode.Space) && Time.time - lastJump < maxJumpStop) { 
+		    if(direction == Direction.free && speed.y > 0) {
+				speed.y /= (1 + speed.y/jumpSpeed);
+			} else if(direction == Direction.left && Vector2.Dot (Vector2.up, leftTangent) > 0) {
+				leftSpeed /= (1 + leftSpeed/jumpSpeed);
+			} else if(direction == Direction.right && Vector2.Dot (Vector2.up, rightTangent) > 0) {
+				rightSpeed /= (1 + rightSpeed/jumpSpeed);
+			}
 			jumping = false;
 		}
+		// leap jump
+		if (leapFrame >= leapMaxFrame || contactCount >= 1) {
+			leaped = false;
+		}
+		if (leaped) {
+			if (leapFrame < leapMaxFrame && jump) {
+				speed += jumpSpeed * Vector2.up;
+				jumping = true;
+				lastJump = Time.time;
+				direction = Direction.free;
+			}
+			leapFrame ++;
+		} 
 
 		if (contactCount == 0) {
 			direction = Direction.free;
@@ -206,12 +234,24 @@ public class TightRocketController : MonoBehaviour {
 					jumping = true;
 					lastJump = Time.time;
 				} else if(leftWall || leftCeiling) {
-					speed = jumpSpeed * leftNormal;
+					if(applyDrag) {
+						if(Vector2.Dot (leftNormal, Vector2.right) > 0) {
+							speed = jumpSpeed * (Vector2.right + Vector2.up * 2.5f).normalized;
+						} else {
+							speed = jumpSpeed * (-Vector2.right + Vector2.up * 2.5f).normalized;
+						}
+						jumping = true;
+						lastJump = Time.time;
+					} else {
+						speed = jumpSpeed * leftNormal;
+					}
 				} 
-				switch(direction) {
-				case Direction.free : break;
-				case Direction.left : speed += leftTangent * leftSpeed; break;
-				case Direction.right : speed += rightTangent * rightSpeed; break;
+				if(!applyDrag) {
+					switch(direction) {
+					case Direction.free : break;
+					case Direction.left : speed += leftTangent * leftSpeed; break;
+					case Direction.right : speed += rightTangent * rightSpeed; break;
+					}
 				}
 
 				direction = Direction.free;
@@ -330,7 +370,7 @@ public class TightRocketController : MonoBehaviour {
 							}
 						}
 					}
-					if(!(acceptRightWalk && goRight) && !(acceptLeftWalk && goLeft) && leftWall) {
+					if(applyDrag) {
 						if(direction == Direction.right) {
 							if(Vector2.Dot (-Vector2.up, rightTangent) > 0) {
 								rightSpeed -= wallDrag * oldSpeedNorm * Time.deltaTime;
@@ -456,8 +496,22 @@ public class TightRocketController : MonoBehaviour {
 			if(contactCount == 0) {
 				switch(direction) {
 				case Direction.free : break;
-				case Direction.left : speed = leftSpeed * leftTangent; break;
-				case Direction.right : speed = rightSpeed * rightTangent; break;
+				case Direction.left : 
+					speed = leftSpeed * leftTangent; 
+					if(Vector2.Angle(Vector2.up,leftNormal) < groundAngle) {
+						leaped = true; 
+						leapFrame = 0;
+						leapNormal = leftNormal;
+					}
+					break;
+				case Direction.right : 
+					speed = rightSpeed * rightTangent; 
+					if(Vector2.Angle(Vector2.up,leftNormal) < groundAngle) {
+						leaped = true;
+						leapFrame = 0;
+						leapNormal = rightNormal;
+					}
+					break;
 				}
 				freeMovement = Vector2.zero;
 				direction = Direction.free;

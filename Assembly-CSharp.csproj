@@ -49,10 +49,10 @@
      <Compile Include="Assets\Scripts\Character controller\CharacterMotor2D.cs" />
      <Compile Include="Assets\Scripts\Character controller\ContactSolver.cs" />
      <Compile Include="Assets\Scripts\Character controller\RocketController.cs" />
+     <Compile Include="Assets\Scripts\Character controller\TightRocketController.cs" />
      <Compile Include="Assets\Scripts\Pick up\Fuel.cs" />
      <Compile Include="Assets\Scripts\Pick up\Pickup.cs" />
      <Compile Include="Assets\Scripts\Test\Test.cs" />
-     <Compile Include="Assets\TightRocketController.cs" />
  <Reference Include="UnityEngine.UI">
  <HintPath>C:/Program Files/Unity/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
  </Reference>
