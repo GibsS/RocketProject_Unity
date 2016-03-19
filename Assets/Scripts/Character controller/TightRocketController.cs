@@ -60,9 +60,36 @@ public class TightRocketController : MonoBehaviour {
 	
 	bool jumping;
 	float lastJump;
+
+	public class TightPrimaryCallback : PrimaryCallback {
+		public bool[] isPrimary (Vector2 normal1, Vector2 normal2) {
+			float angle1 = Vector2.Angle (normal1, Vector2.up);
+			float angle2 = Vector2.Angle (normal2, Vector2.up);
+			bool[] primary = new bool[2];
+
+			if (angle1 < angle2) {
+				if(Input.GetKey (KeyCode.LeftShift) ||  angle1 < 91) {
+					primary[0] = true;
+				} 
+			} else {
+				if(Input.GetKey (KeyCode.LeftShift) ||  angle2 < 91) {
+					primary[1] = true;
+				} 
+			}
+			return primary;
+		}
+		public bool isPrimary (Vector2 normal) {
+			if (Input.GetKey (KeyCode.LeftShift) || Vector2.Angle (normal, Vector2.up) < 91) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
 	
 	void Start () {
 		motor = GetComponent<CharacterMotor2D> ();
+		motor.setPrimaryCallback (new TightPrimaryCallback());
 
 		direction = Direction.free;
 		speed = Vector2.zero;

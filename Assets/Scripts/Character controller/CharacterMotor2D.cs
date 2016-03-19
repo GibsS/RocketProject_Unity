@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 
 public class CharacterMotor2D : MonoBehaviour {
 
@@ -8,21 +8,27 @@ public class CharacterMotor2D : MonoBehaviour {
 	public float radius;
 
 	ContactInfo[] contactInfos;
-	public int contactCount;
+	bool[] isPrimary; // only one at the time
+	int contactCount;
 
 	int left;
 	int right;
 
 	Vector2 leftTangent;
 	Vector2 rightTangent;
-	
-	EdgeCollider2D tester;
+
+	PrimaryCallback primaryCallback;
 
 	void Start() {
-		tester = GetComponent<EdgeCollider2D> ();
+		//tester = GetComponent<EdgeCollider2D> ();
 		contactSolver = new ContactSolver ();
 		contactInfos = new ContactInfo[2];
+		isPrimary = new bool[2];
 		contactCount = 0;
+	}
+
+	public void setPrimaryCallback(PrimaryCallback p) {
+		primaryCallback = p;
 	}
 
 	public bool hasContact() {
@@ -117,8 +123,6 @@ public class CharacterMotor2D : MonoBehaviour {
 	}
 
 	public Vector2 move(Vector2 movement) {
-		
-		//Debug.Log (movement);
 		if (contactCount == 0) {
 			return free (movement);
 		} else if (contactCount == 1) {
@@ -133,7 +137,6 @@ public class CharacterMotor2D : MonoBehaviour {
 				}
 			}
 		} else {
-
 			Vector2 normal1 = contactInfos[0].getNormal();
 			Vector2 normal2 = contactInfos[1].getNormal();
 
@@ -175,41 +178,6 @@ public class CharacterMotor2D : MonoBehaviour {
 		}
 	}
 
-	/*// Not tested..
-	public Vector2 lineMove(int contactId, float movement) {
-		Vector2 normal1 = contactInfos[0].getNormal();
-		Vector2 normal2 = contactInfos[1].getNormal();
-		
-		Vector2 tangent1 = contactInfos[0].getMainTangent();
-		Vector2 tangent2 = contactInfos[1].getMainTangent();
-		
-		if(Vector2.Dot(normal1, tangent2) < 0) {
-			tangent2 = -tangent2;
-		}
-		if(Vector2.Dot(normal2, tangent1) < 0) {
-			tangent1 = -tangent1;
-		}
-
-		if (contactId == 0 && contactCount >= 1) {
-			if(contactCount == 2) {
-				if(Vector2.Dot(normal2, movement*tangent1) < 0) {
-					return Vector2.zero;
-				} else {
-					return line(0, movement);
-				}
-			} else {
-				return line (0, movement);
-			}
-		} else if (contactId == 1 && contactCount == 2) {
-			if(Vector2.Dot(normal1, movement*tangent2) < 0) {
-				return Vector2.zero;
-			} else {
-				return line(1, movement);
-			}
-		} else {
-			return Vector2.zero;
-		}
-	}*/
 	public Vector2 leftLineMove(float movement) {
 		if (contactCount == 1) {
 			Vector2 normal = contactInfos[0].getNormal();
@@ -363,6 +331,11 @@ public class CharacterMotor2D : MonoBehaviour {
 			Vector2 normal = contactInfos[0].getNormal();
 			leftTangent = new Vector2(-normal.y, normal.x);
 			rightTangent = new Vector2(normal.y, -normal.x);
+
+			if(primaryCallback != null) {
+				isPrimary[0] = primaryCallback.isPrimary (normal);
+				isPrimary[1] = false;
+			}
 		} else if (contactCount == 2) {
 			Vector2 normal1 = contactInfos[0].getNormal();
 			Vector2 normal2 = contactInfos[1].getNormal();
@@ -384,6 +357,10 @@ public class CharacterMotor2D : MonoBehaviour {
 				left = 1;
 				right = 0;
 			}
+
+			if(primaryCallback != null) {
+				isPrimary = primaryCallback.isPrimary (normal1, normal2);
+			}
 		}
 	}
 
@@ -401,35 +378,35 @@ public class CharacterMotor2D : MonoBehaviour {
 
 		for (int i = 0; i < colliders.Length; i++) {
 			if(colliders[i].GetType() == typeof(EdgeCollider2D)) {
-			EdgeCollider2D edge = (EdgeCollider2D)colliders[i];
+				EdgeCollider2D edge = (EdgeCollider2D)colliders[i];
 
-			for(int j = 0; j < edge.points.Length-1; j++) {
-				bool canCollide = (contactCount < 1 || contactInfos[0].acceptableEdge(edge, j))
-								&& (contactCount < 2 || contactInfos[1].acceptableEdge(edge, j))
-								&& tester != edge;
+				for(int j = 0; j < edge.points.Length-1; j++) {
+					bool canCollide = (contactCount < 1 || contactInfos[0].acceptableEdge(edge, j))
+									&& (contactCount < 2 || contactInfos[1].acceptableEdge(edge, j));
+									//&& tester != edge;
 
-				if(canCollide) {
-					TrajectoryInfo ti = contactSolver.getFirstContact(start,
-					                                                  end,
-					                                                  edge.transform.TransformPoint(edge.points[j]+edge.offset),
-					                                                  edge.transform.TransformPoint(edge.points[j+1]+edge.offset),
-					                                                  radius);
+					if(canCollide) {
+						TrajectoryInfo ti = contactSolver.getFirstContact(start,
+						                                                  end,
+						                                                  edge.transform.TransformPoint(edge.points[j]+edge.offset),
+						                                                  edge.transform.TransformPoint(edge.points[j+1]+edge.offset),
+						                                                  radius);
 
-					if(ti) {
-						Vector2 tangent = edge.points[j+1] - edge.points[j];
-						Vector2 normal = new Vector2(-tangent.y, tangent.x);
-						if(edge.gameObject.tag != "OneWay" || (ti.side && Vector2.Dot (movement, normal) < 0)) {
-							float distance = Vector2.Distance(start, ti.getPosition());
-							if (distance < minDistance) {
-								minTi = ti;
-								minDistance = distance;
-								minEdge = edge;
-								minPoint = j;
+						if(ti) {
+							Vector2 tangent = edge.points[j+1] - edge.points[j];
+							Vector2 normal = new Vector2(-tangent.y, tangent.x);
+							if(edge.gameObject.tag != "OneWay" || (ti.side && Vector2.Dot (movement, normal) < 0)) {
+								float distance = Vector2.Distance(start, ti.getPosition());
+								if (distance < minDistance) {
+									minTi = ti;
+									minDistance = distance;
+									minEdge = edge;
+									minPoint = j;
+								}
 							}
 						}
 					}
 				}
-			}
 			}
 		}
 
@@ -459,6 +436,12 @@ public class CharacterMotor2D : MonoBehaviour {
 			}
 		}
 	}
+}
+
+public interface PrimaryCallback {
+
+	bool[] isPrimary (Vector2 normal1, Vector2 normal2);
+	bool isPrimary (Vector2 normal);
 }
 
 public class ContactInfo {

@@ -50,6 +50,7 @@
      <Compile Include="Assets\Scripts\Character controller\ContactSolver.cs" />
      <Compile Include="Assets\Scripts\Character controller\RocketController.cs" />
      <Compile Include="Assets\Scripts\Character controller\TightRocketController.cs" />
+     <Compile Include="Assets\Scripts\MovingPlatform.cs" />
      <Compile Include="Assets\Scripts\Pick up\Fuel.cs" />
      <Compile Include="Assets\Scripts\Pick up\Pickup.cs" />
      <Compile Include="Assets\Scripts\Test\Test.cs" />
